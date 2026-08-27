@@ -1,7 +1,11 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import BaseDefinitions from "../component/BaseDefinitions";
 import { SearchableDropdown, type DropdownOption } from "../component/Dropdown";
+import ElectionCandidates from "../component/ElectionCandidates";
+import Persons from "../component/Persons";
+import UsersTree from "../component/UsersTree";
 
 type IconName =
   | "home" | "users" | "map" | "building" | "flow" | "chart"
@@ -28,8 +32,8 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     check: <path d="m5 12 4 4L19 6" />,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
     briefcase: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" /></>,
-    edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
-    trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7" /></>,
+    edit: <><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="m18.4 2.6 3 3L12 15l-4 1 1-4Z" /></>,
+    trash: <><path d="M4 7h16" /><path d="M9 3h6l1 4H8Z" /><path d="m6 7 1 14h10l1-14" /><path d="M10 11v6M14 11v6" /></>,
     more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
     logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /></>,
@@ -57,7 +61,7 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
       {
         title: "اطلاعات پایه",
         icon: "briefcase",
-        children: [{ title: "پست‌های سازمانی" }],
+        children: [{ title: "تعاریف پایه" }, { title: "پست‌های سازمانی" }],
       },
       {
         title: "کاربران و دسترسی‌ها",
@@ -83,6 +87,11 @@ const menuGroups: { title: string; items: MenuItem[] }[] = [
   {
     title: "عملیات سامانه",
     items: [
+      {
+        title: "داوطلبان انتخابات",
+        icon: "users",
+        children: [{ title: "اشخاص" }],
+      },
       {
         title: "فرایندهای انتخاباتی",
         icon: "flow",
@@ -133,6 +142,13 @@ type OrganizationalPost = {
   placeType: 1 | 2 | 3 | 4;
 };
 
+type ThemeName = "ocean" | "emerald";
+
+const themeOptions: { name: ThemeName; label: string }[] = [
+  { name: "ocean", label: "آبی اقیانوسی" },
+  { name: "emerald", label: "سبز سامانه ارسال" },
+];
+
 const placeTypes = {
   1: { title: "ستاد", className: "headquarters" },
   2: { title: "استان", className: "province" },
@@ -155,31 +171,22 @@ const postPlaceOptions: DropdownOption<"1" | "2" | "3" | "4">[] = [
   { value: "4", label: "شهرستان", description: "قابل تخصیص در سطح شهرستان" },
 ];
 
-const initialPosts: OrganizationalPost[] = [
-  { postId: 1001, title: "کارشناس", placeType: 1 },
-  { postId: 1002, title: "ادمین", placeType: 1 },
-  { postId: 1003, title: "رئیس دفتر استان", placeType: 2 },
-  { postId: 1004, title: "مسئول واحد اسناد و بررسی", placeType: 2 },
-  { postId: 1005, title: "کارشناس واحد اسناد و بررسی", placeType: 2 },
-  { postId: 1006, title: "شورای تحقیق استان", placeType: 2 },
-  { postId: 1007, title: "همیار حقوقی استان", placeType: 2 },
-  { postId: 1008, title: "رئیس حوزه انتخابیه", placeType: 3 },
-  { postId: 1009, title: "مسئول اسناد و تحقیق حوزه انتخابیه", placeType: 3 },
-  { postId: 1010, title: "نماینده شهرستان", placeType: 4 },
-];
-
 export default function Home() {
   const [currentUserName, setCurrentUserName] = useState("کاربر سامانه");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>(["اطلاعات پایه"]);
-  const [currentView, setCurrentView] = useState<"dashboard" | "posts">("posts");
-  const [posts, setPosts] = useState<OrganizationalPost[]>(initialPosts);
+  const [currentView, setCurrentView] = useState<"dashboard" | "posts" | "definitions" | "persons" | "users" | "candidates">("dashboard");
+  const [posts, setPosts] = useState<OrganizationalPost[]>([]);
+  const [postsLoading, setPostsLoading] = useState(false);
+  const [postsBusy, setPostsBusy] = useState(false);
+  const [postsError, setPostsError] = useState("");
   const [searchText, setSearchText] = useState("");
   const [placeFilter, setPlaceFilter] = useState("0");
   const [formOpen, setFormOpen] = useState(false);
   const [editingPostId, setEditingPostId] = useState<number | null>(null);
   const [postTitle, setPostTitle] = useState("");
   const [postPlaceType, setPostPlaceType] = useState<"1" | "2" | "3" | "4">("1");
+  const [theme, setTheme] = useState<ThemeName>("ocean");
 
   useEffect(() => {
     let active = true;
@@ -200,6 +207,33 @@ export default function Home() {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("merat-theme");
+    if (savedTheme === "ocean" || savedTheme === "emerald") setTheme(savedTheme);
+  }, []);
+
+  const changeTheme = (nextTheme: ThemeName) => {
+    setTheme(nextTheme);
+    window.localStorage.setItem("merat-theme", nextTheme);
+  };
+
+  const loadPosts = async () => {
+    setPostsLoading(true);
+    setPostsError("");
+    try {
+      const response = await fetch("/api/posts", { cache: "no-store" });
+      const result = await response.json() as { items?: { PostId: number; OnvanPost: string; TypeMahal: 1 | 2 | 3 | 4 }[]; message?: string };
+      if (!response.ok) throw new Error(result.message || "دریافت سمت‌ها انجام نشد.");
+      setPosts((result.items ?? []).map((item) => ({ postId: Number(item.PostId), title: item.OnvanPost, placeType: Number(item.TypeMahal) as OrganizationalPost["placeType"] })));
+    } catch (error) {
+      setPostsError(error instanceof Error ? error.message : "دریافت سمت‌ها انجام نشد.");
+    } finally {
+      setPostsLoading(false);
+    }
+  };
+
+  useEffect(() => { if (currentView === "posts") void loadPosts(); }, [currentView]);
 
   const logout = async () => {
     try {
@@ -232,20 +266,29 @@ export default function Home() {
     setFormOpen(true);
   };
 
-  const savePost = () => {
+  const savePost = async () => {
     if (!postTitle.trim()) return;
     const placeType = Number(postPlaceType) as OrganizationalPost["placeType"];
-    if (editingPostId) {
-      setPosts((items) => items.map((post) => post.postId === editingPostId ? { ...post, title: postTitle.trim(), placeType } : post));
-    } else {
-      const nextId = Math.max(...posts.map((post) => post.postId), 1000) + 1;
-      setPosts((items) => [{ postId: nextId, title: postTitle.trim(), placeType }, ...items]);
-    }
-    setFormOpen(false);
+    setPostsBusy(true); setPostsError("");
+    try {
+      const response = await fetch("/api/posts", { method: editingPostId ? "PUT" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ postId: editingPostId, title: postTitle.trim(), placeType }) });
+      const result = await response.json() as { message?: string };
+      if (!response.ok) throw new Error(result.message || "ذخیره سمت انجام نشد.");
+      setFormOpen(false); await loadPosts();
+    } catch (error) { setPostsError(error instanceof Error ? error.message : "ذخیره سمت انجام نشد."); }
+    finally { setPostsBusy(false); }
+  };
+
+  const deletePost = async (post: OrganizationalPost) => {
+    if (!window.confirm(`سمت «${post.title}» حذف شود؟`)) return;
+    setPostsBusy(true); setPostsError("");
+    try { const response = await fetch(`/api/posts?id=${encodeURIComponent(post.postId)}`, { method: "DELETE" }); const result = await response.json() as { message?: string }; if (!response.ok) throw new Error(result.message || "حذف سمت انجام نشد."); await loadPosts(); }
+    catch (error) { setPostsError(error instanceof Error ? error.message : "حذف سمت انجام نشد."); }
+    finally { setPostsBusy(false); }
   };
 
   return (
-    <div className="app-shell">
+    <div className="app-shell" data-theme={theme}>
       {sidebarOpen && <button className="mobile-overlay" aria-label="بستن منو" onClick={() => setSidebarOpen(false)} />}
 
       <aside className={`sidebar ${sidebarOpen ? "sidebar-open" : ""}`}>
@@ -264,7 +307,7 @@ export default function Home() {
                 return (
                   <div className={`nav-block ${isOpen ? "open" : ""}`} key={item.title}>
                     <button
-                      className={`nav-item ${(item.title === "پیشخوان" && currentView === "dashboard") || (item.title === "اطلاعات پایه" && currentView === "posts") ? "active" : ""}`}
+                      className={`nav-item ${(item.title === "پیشخوان" && currentView === "dashboard") || (item.title === "اطلاعات پایه" && (currentView === "posts" || currentView === "definitions")) || (item.title === "کاربران و دسترسی‌ها" && (currentView === "persons" || currentView === "users")) || (item.title === "داوطلبان انتخابات" && currentView === "candidates") ? "active" : ""}`}
                       aria-expanded={item.children ? isOpen : undefined}
                       onClick={() => {
                         if (item.children) toggleMenu(item.title);
@@ -280,10 +323,14 @@ export default function Home() {
                       <div className="submenu" aria-hidden={!isOpen}>
                         {item.children.map((child) => (
                           <button
-                            className={`submenu-item ${child.title === "پست‌های سازمانی" && currentView === "posts" ? "active" : ""}`}
+                            className={`submenu-item ${(child.title === "پست‌های سازمانی" && currentView === "posts") || (child.title === "تعاریف پایه" && currentView === "definitions") || (child.title === "فهرست اشخاص" && currentView === "persons") || (child.title === "فهرست کاربران" && currentView === "users") || (child.title === "اشخاص" && currentView === "candidates") ? "active" : ""}`}
                             key={child.title}
                             onClick={() => {
                               if (child.title === "پست‌های سازمانی") setCurrentView("posts");
+                              if (child.title === "تعاریف پایه") setCurrentView("definitions");
+                              if (child.title === "فهرست اشخاص") setCurrentView("persons");
+                              if (child.title === "فهرست کاربران") setCurrentView("users");
+                              if (child.title === "اشخاص") setCurrentView("candidates");
                               setSidebarOpen(false);
                             }}
                           >
@@ -301,14 +348,22 @@ export default function Home() {
           ))}
         </nav>
 
-        <div className="sidebar-foot"><span className="online-dot" /><span>ارتباط با سرور برقرار است</span><span className="version">نسخه ۱.۳.۴</span></div>
+        <div className="sidebar-foot">
+          <span className="online-dot" />
+          <span>ارتباط با سرور برقرار است</span>
+          <div className="theme-switcher" aria-label="انتخاب رنگ سامانه">
+            {themeOptions.map((option) => (
+              <button key={option.name} type="button" title={option.label} aria-label={option.label} aria-pressed={theme === option.name} className={`theme-dot ${option.name} ${theme === option.name ? "active" : ""}`} onClick={() => changeTheme(option.name)} />
+            ))}
+          </div>
+        </div>
       </aside>
 
       <div className="content-shell">
         <header className="topbar">
           <div className="topbar-right">
             <button className="icon-button menu-button" aria-label="باز کردن منو" onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button>
-            <div><h1 className="title-font page-title">{currentView === "posts" ? "پست‌های سازمانی" : "پیشخوان مدیریت"}</h1><p className="breadcrumb">{currentView === "posts" ? <><span>اطلاعات پایه</span><span>/</span><span>پست‌های سازمانی</span></> : <>خانه <span>/</span> پیشخوان</>}</p></div>
+            <div><h1 className="title-font page-title">{currentView === "posts" ? "پست‌های سازمانی" : currentView === "definitions" ? "تعاریف پایه" : currentView === "persons" ? "فهرست اشخاص" : currentView === "users" ? "فهرست کاربران" : currentView === "candidates" ? "اشخاص" : "پیشخوان مدیریت"}</h1><p className="breadcrumb">{currentView === "posts" ? <><span>اطلاعات پایه</span><span>/</span><span>پست‌های سازمانی</span></> : currentView === "definitions" ? <><span>اطلاعات پایه</span><span>/</span><span>تعاریف پایه</span></> : currentView === "persons" ? <><span>کاربران و دسترسی‌ها</span><span>/</span><span>فهرست اشخاص</span></> : currentView === "users" ? <><span>کاربران و دسترسی‌ها</span><span>/</span><span>فهرست کاربران</span></> : currentView === "candidates" ? <><span>داوطلبان انتخابات</span><span>/</span><span>اشخاص</span></> : <>خانه <span>/</span> پیشخوان</>}</p></div>
           </div>
           <div className="topbar-left">
             <button className="icon-button notification-button" aria-label="اعلان‌ها"><Icon name="bell" /><span className="notification-dot" /></button>
@@ -367,14 +422,14 @@ export default function Home() {
               </div>
             </section>
           </div>
-        </main> : <main className="posts-page">
+        </main> : currentView === "posts" ? <main className="posts-page">
           <section className="posts-heading">
             <div>
               <p className="eyebrow">اطلاعات پایه</p>
               <h2 className="title-font">مدیریت پست‌های سازمانی</h2>
               <p>عنوان پست و سطح محل قابل استفاده برای هر پست را مدیریت کنید.</p>
             </div>
-            <button className="primary-button" onClick={openCreatePost}><Icon name="plus" size={18} />افزودن پست جدید</button>
+            <button className="primary-button" onClick={openCreatePost} disabled={postsBusy}><Icon name="plus" size={18} />افزودن سمت جدید</button>
           </section>
 
           <section className="posts-card">
@@ -397,23 +452,23 @@ export default function Home() {
               <table className="posts-table">
                 <thead><tr><th>ردیف</th><th>کد پست</th><th>عنوان پست سازمانی</th><th>سطح محل</th><th className="post-actions-title">عملیات</th></tr></thead>
                 <tbody>
-                  {filteredPosts.map((post, index) => {
+                  {postsLoading ? <tr><td className="posts-empty" colSpan={5}>در حال دریافت سمت‌ها...</td></tr> : postsError ? <tr><td className="posts-empty" colSpan={5}>{postsError}</td></tr> : filteredPosts.map((post, index) => {
                     const place = placeTypes[post.placeType];
                     return <tr key={post.postId}>
                       <td className="muted-cell">{(index + 1).toLocaleString("fa-IR")}</td>
                       <td className="muted-cell">{post.postId.toLocaleString("fa-IR", { useGrouping: false })}</td>
                       <td><span className="post-name"><i><Icon name="briefcase" size={15} /></i>{post.title}</span></td>
                       <td><span className={`place-pill ${place.className}`}>{place.title}</span></td>
-                      <td><span className="post-actions"><button aria-label={`ویرایش ${post.title}`} onClick={() => openEditPost(post)}><Icon name="edit" size={17} /></button><button className="delete" aria-label={`حذف ${post.title}`} onClick={() => setPosts((items) => items.filter((item) => item.postId !== post.postId))}><Icon name="trash" size={17} /></button><button aria-label="عملیات بیشتر"><Icon name="more" size={18} /></button></span></td>
+                      <td><span className="post-actions"><button aria-label={`ویرایش ${post.title}`} disabled={postsBusy} onClick={() => openEditPost(post)}><Icon name="edit" size={17} /></button><button className="delete" disabled={postsBusy} aria-label={`حذف ${post.title}`} onClick={() => void deletePost(post)}><Icon name="trash" size={17} /></button></span></td>
                     </tr>;
                   })}
-                  {filteredPosts.length === 0 && <tr><td className="posts-empty" colSpan={5}>پستی با این مشخصات پیدا نشد.</td></tr>}
+                  {!postsLoading && !postsError && filteredPosts.length === 0 && <tr><td className="posts-empty" colSpan={5}>سمتی با این مشخصات پیدا نشد.</td></tr>}
                 </tbody>
               </table>
             </div>
             <div className="posts-footer"><span>نمایش {filteredPosts.length.toLocaleString("fa-IR")} مورد از {posts.length.toLocaleString("fa-IR")} پست</span><span className="posts-pagination"><button><Icon name="arrow" size={14} /></button><button className="current">۱</button><button><Icon name="arrow" size={14} /></button></span></div>
           </section>
-        </main>}
+        </main> : currentView === "definitions" ? <BaseDefinitions /> : currentView === "persons" ? <Persons /> : currentView === "users" ? <UsersTree /> : <ElectionCandidates />}
       </div>
 
       {formOpen && <div className="post-modal-backdrop" role="presentation" onMouseDown={() => setFormOpen(false)}>
@@ -422,7 +477,7 @@ export default function Home() {
           <div className="post-modal-header"><span className="modal-symbol"><Icon name="briefcase" size={21} /></span><div><h3 id="post-modal-title" className="title-font">{editingPostId ? "ویرایش پست سازمانی" : "افزودن پست سازمانی"}</h3><p>عنوان پست و سطح محل قابل استفاده را مشخص کنید.</p></div></div>
           <div className="post-form-field"><label htmlFor="post-title">عنوان پست</label><input id="post-title" autoFocus value={postTitle} onChange={(event) => setPostTitle(event.target.value)} placeholder="برای نمونه: رئیس دفتر استان" /></div>
           <div className="post-form-field"><label>سطح محل</label><SearchableDropdown value={postPlaceType} options={postPlaceOptions} onChange={setPostPlaceType} placeholder="انتخاب سطح محل" searchPlaceholder="جستجو در سطوح محل..." noResultText="سطحی پیدا نشد." ariaLabel="انتخاب سطح محل پست" menuWidth={420} /></div>
-          <div className="post-modal-actions"><button className="cancel-button" onClick={() => setFormOpen(false)}>انصراف</button><button className="primary-button" onClick={savePost}>{editingPostId ? "ثبت تغییرات" : "ثبت پست"}</button></div>
+          <div className="post-modal-actions"><button className="cancel-button" disabled={postsBusy} onClick={() => setFormOpen(false)}>انصراف</button><button className="primary-button" disabled={postsBusy} onClick={() => void savePost()}>{postsBusy ? "در حال ذخیره..." : editingPostId ? "ثبت تغییرات" : "ثبت سمت"}</button></div>
         </section>
       </div>}
     </div>

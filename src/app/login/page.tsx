@@ -92,7 +92,7 @@ export default function LoginPage() {
 
           <form className={styles.form} onSubmit={handleSubmit}>
             <label className={styles.field}>
-              <span className={styles.fieldLabel}>نام کاربری یا کد ملی</span>
+              <span className={styles.fieldLabel}>نام کاربر یا کد ملی</span>
               <span className={styles.inputBox}>
                 <span className={styles.inputIcon}><Icon name="user" /></span>
                 <input
@@ -100,8 +100,8 @@ export default function LoginPage() {
                   autoComplete="username"
                   value={identifier}
                   onChange={(event) => setIdentifier(event.target.value)}
-                  placeholder="نام کاربری یا کد ملی را وارد کنید"
-                  aria-label="نام کاربری یا کد ملی"
+                  placeholder="نام کاربر (UserId) یا کد ملی را وارد کنید"
+                  aria-label="نام کاربر یا کد ملی"
                   required
                   disabled={loading}
                 />
