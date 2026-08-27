@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { SearchableDropdown, type DropdownOption } from "../component/Dropdown";
 
 type IconName =
   | "home" | "users" | "map" | "building" | "flow" | "chart"
   | "settings" | "bell" | "menu" | "close" | "arrow" | "plus"
-  | "search" | "calendar" | "check" | "clock";
+  | "search" | "calendar" | "check" | "clock" | "briefcase"
+  | "edit" | "trash" | "more" | "user" | "logout";
 
 function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
   const paths: Record<IconName, ReactNode> = {
@@ -25,19 +27,90 @@ function Icon({ name, size = 21 }: { name: IconName; size?: number }) {
     calendar: <><rect x="3" y="5" width="18" height="16" rx="2" /><path d="M16 3v4M8 3v4M3 10h18" /></>,
     check: <path d="m5 12 4 4L19 6" />,
     clock: <><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>,
+    briefcase: <><rect x="3" y="7" width="18" height="13" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" /></>,
+    edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+    trash: <><path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15M10 10v7M14 10v7" /></>,
+    more: <><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none" /><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none" /></>,
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4.5 21a7.5 7.5 0 0 1 15 0" /></>,
+    logout: <><path d="M10 17l5-5-5-5M15 12H3" /><path d="M14 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" /></>,
   };
 
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
 
-const menuItems: { title: string; icon: IconName; active?: boolean; badge?: string }[] = [
-  { title: "پیشخوان", icon: "home", active: true },
-  { title: "مدیریت کاربران", icon: "users" },
-  { title: "ساختار محل‌ها", icon: "map" },
-  { title: "حوزه‌های انتخابیه", icon: "building" },
-  { title: "گردش کار", icon: "flow", badge: "۸" },
-  { title: "گزارش‌ها", icon: "chart" },
-  { title: "تنظیمات سامانه", icon: "settings" },
+type MenuItem = {
+  title: string;
+  icon: IconName;
+  active?: boolean;
+  badge?: string;
+  children?: { title: string; badge?: string }[];
+};
+
+const menuGroups: { title: string; items: MenuItem[] }[] = [
+  {
+    title: "عمومی",
+    items: [{ title: "پیشخوان", icon: "home", active: true }],
+  },
+  {
+    title: "مدیریت پایه",
+    items: [
+      {
+        title: "اطلاعات پایه",
+        icon: "briefcase",
+        children: [{ title: "پست‌های سازمانی" }],
+      },
+      {
+        title: "کاربران و دسترسی‌ها",
+        icon: "users",
+        children: [
+          { title: "فهرست اشخاص" },
+          { title: "فهرست کاربران" },
+          { title: "سمت‌های سازمانی" },
+          { title: "سطوح دسترسی" },
+        ],
+      },
+      {
+        title: "ساختار جغرافیایی",
+        icon: "map",
+        children: [
+          { title: "استان‌ها" },
+          { title: "حوزه‌های انتخابیه" },
+          { title: "شهرستان‌ها" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "عملیات سامانه",
+    items: [
+      {
+        title: "فرایندهای انتخاباتی",
+        icon: "flow",
+        badge: "۸",
+        children: [
+          { title: "کارتابل ورودی", badge: "۸" },
+          { title: "درخواست‌های ثبت‌شده" },
+          { title: "سوابق بررسی" },
+        ],
+      },
+      {
+        title: "اطلاعات انتخابات",
+        icon: "building",
+        children: [
+          { title: "دوره‌های انتخابات" },
+          { title: "تعریف حوزه‌ها" },
+          { title: "سهمیه حوزه‌ها" },
+        ],
+      },
+    ],
+  },
+  {
+    title: "پایش و تنظیمات",
+    items: [
+      { title: "گزارش‌ها", icon: "chart", children: [{ title: "گزارش مدیریتی" }, { title: "گزارش عملکرد" }] },
+      { title: "تنظیمات سامانه", icon: "settings", children: [{ title: "تنظیمات عمومی" }, { title: "ثبت فعالیت‌ها" }] },
+    ],
+  },
 ];
 
 const stats: { title: string; value: string; detail: string; icon: IconName; tone: string }[] = [
@@ -54,8 +127,122 @@ const activities = [
   { title: "افزودن نماینده شهرستان", area: "شهرستان آذرشهر", date: "۱۴۰۵/۰۶/۰۳", status: "منتظر تأیید", statusType: "waiting" },
 ];
 
+type OrganizationalPost = {
+  postId: number;
+  title: string;
+  placeType: 1 | 2 | 3 | 4;
+};
+
+const placeTypes = {
+  1: { title: "ستاد", className: "headquarters" },
+  2: { title: "استان", className: "province" },
+  3: { title: "حوزه انتخابیه", className: "district" },
+  4: { title: "شهرستان", className: "county" },
+} as const;
+
+const placeFilterOptions: DropdownOption<string>[] = [
+  { value: "0", label: "همه سطوح محل", searchText: "همه" },
+  { value: "1", label: "ستاد" },
+  { value: "2", label: "استان" },
+  { value: "3", label: "حوزه انتخابیه", searchText: "حوزه" },
+  { value: "4", label: "شهرستان" },
+];
+
+const postPlaceOptions: DropdownOption<"1" | "2" | "3" | "4">[] = [
+  { value: "1", label: "ستاد", description: "قابل تخصیص در سطح ستاد" },
+  { value: "2", label: "استان", description: "قابل تخصیص در سطح استان" },
+  { value: "3", label: "حوزه انتخابیه", description: "قابل تخصیص در سطح حوزه" },
+  { value: "4", label: "شهرستان", description: "قابل تخصیص در سطح شهرستان" },
+];
+
+const initialPosts: OrganizationalPost[] = [
+  { postId: 1001, title: "کارشناس", placeType: 1 },
+  { postId: 1002, title: "ادمین", placeType: 1 },
+  { postId: 1003, title: "رئیس دفتر استان", placeType: 2 },
+  { postId: 1004, title: "مسئول واحد اسناد و بررسی", placeType: 2 },
+  { postId: 1005, title: "کارشناس واحد اسناد و بررسی", placeType: 2 },
+  { postId: 1006, title: "شورای تحقیق استان", placeType: 2 },
+  { postId: 1007, title: "همیار حقوقی استان", placeType: 2 },
+  { postId: 1008, title: "رئیس حوزه انتخابیه", placeType: 3 },
+  { postId: 1009, title: "مسئول اسناد و تحقیق حوزه انتخابیه", placeType: 3 },
+  { postId: 1010, title: "نماینده شهرستان", placeType: 4 },
+];
+
 export default function Home() {
+  const [currentUserName, setCurrentUserName] = useState("کاربر سامانه");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [openMenus, setOpenMenus] = useState<string[]>(["اطلاعات پایه"]);
+  const [currentView, setCurrentView] = useState<"dashboard" | "posts">("posts");
+  const [posts, setPosts] = useState<OrganizationalPost[]>(initialPosts);
+  const [searchText, setSearchText] = useState("");
+  const [placeFilter, setPlaceFilter] = useState("0");
+  const [formOpen, setFormOpen] = useState(false);
+  const [editingPostId, setEditingPostId] = useState<number | null>(null);
+  const [postTitle, setPostTitle] = useState("");
+  const [postPlaceType, setPostPlaceType] = useState<"1" | "2" | "3" | "4">("1");
+
+  useEffect(() => {
+    let active = true;
+
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Unauthorized");
+        return response.json() as Promise<{ user?: { fullName?: string } }>;
+      })
+      .then((result) => {
+        if (active && result.user?.fullName) setCurrentUserName(result.user.fullName);
+      })
+      .catch(() => {
+        if (active) window.location.assign("/login");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const logout = async () => {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } finally {
+      window.location.assign("/login");
+    }
+  };
+
+  const toggleMenu = (title: string) => {
+    setOpenMenus((current) => current.includes(title) ? current.filter((item) => item !== title) : [...current, title]);
+  };
+
+  const filteredPosts = posts.filter((post) => {
+    const matchesText = post.title.includes(searchText.trim()) || String(post.postId).includes(searchText.trim());
+    return matchesText && (placeFilter === "0" || String(post.placeType) === placeFilter);
+  });
+
+  const openCreatePost = () => {
+    setEditingPostId(null);
+    setPostTitle("");
+    setPostPlaceType("1");
+    setFormOpen(true);
+  };
+
+  const openEditPost = (post: OrganizationalPost) => {
+    setEditingPostId(post.postId);
+    setPostTitle(post.title);
+    setPostPlaceType(String(post.placeType) as "1" | "2" | "3" | "4");
+    setFormOpen(true);
+  };
+
+  const savePost = () => {
+    if (!postTitle.trim()) return;
+    const placeType = Number(postPlaceType) as OrganizationalPost["placeType"];
+    if (editingPostId) {
+      setPosts((items) => items.map((post) => post.postId === editingPostId ? { ...post, title: postTitle.trim(), placeType } : post));
+    } else {
+      const nextId = Math.max(...posts.map((post) => post.postId), 1000) + 1;
+      setPosts((items) => [{ postId: nextId, title: postTitle.trim(), placeType }, ...items]);
+    }
+    setFormOpen(false);
+  };
 
   return (
     <div className="app-shell">
@@ -68,40 +255,74 @@ export default function Home() {
           <button className="icon-button sidebar-close" aria-label="بستن منو" onClick={() => setSidebarOpen(false)}><Icon name="close" /></button>
         </div>
 
-        <div className="sidebar-user">
-          <div className="avatar">ق‌س</div>
-          <div className="sidebar-user-text"><p className="title-font">قاسم صفرزاد</p><span>کارشناس ستاد</span></div>
-          <Icon name="arrow" size={17} />
-        </div>
-
         <nav className="sidebar-nav" aria-label="منوی اصلی">
-          <p className="nav-label">منوی اصلی</p>
-          {menuItems.map((item) => (
-            <button key={item.title} className={`nav-item ${item.active ? "active" : ""}`} onClick={() => setSidebarOpen(false)}>
-              <span className="nav-icon"><Icon name={item.icon} /></span><span>{item.title}</span>
-              {item.badge && <span className="nav-badge">{item.badge}</span>}
-              {!item.badge && !item.active && <Icon name="arrow" size={15} />}
-            </button>
+          {menuGroups.map((group) => (
+            <div className="nav-group" key={group.title}>
+              <p className="nav-label">{group.title}</p>
+              {group.items.map((item) => {
+                const isOpen = openMenus.includes(item.title);
+                return (
+                  <div className={`nav-block ${isOpen ? "open" : ""}`} key={item.title}>
+                    <button
+                      className={`nav-item ${(item.title === "پیشخوان" && currentView === "dashboard") || (item.title === "اطلاعات پایه" && currentView === "posts") ? "active" : ""}`}
+                      aria-expanded={item.children ? isOpen : undefined}
+                      onClick={() => {
+                        if (item.children) toggleMenu(item.title);
+                        else if (item.title === "پیشخوان") setCurrentView("dashboard");
+                        setSidebarOpen(false);
+                      }}
+                    >
+                      <span className="nav-icon"><Icon name={item.icon} /></span><span>{item.title}</span>
+                      {item.badge && <span className="nav-badge">{item.badge}</span>}
+                      {item.children && <span className="menu-chevron"><Icon name="arrow" size={15} /></span>}
+                    </button>
+                    {item.children && (
+                      <div className="submenu" aria-hidden={!isOpen}>
+                        {item.children.map((child) => (
+                          <button
+                            className={`submenu-item ${child.title === "پست‌های سازمانی" && currentView === "posts" ? "active" : ""}`}
+                            key={child.title}
+                            onClick={() => {
+                              if (child.title === "پست‌های سازمانی") setCurrentView("posts");
+                              setSidebarOpen(false);
+                            }}
+                          >
+                            <span className="submenu-dot" />
+                            <span>{child.title}</span>
+                            {child.badge && <span className="submenu-badge">{child.badge}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           ))}
         </nav>
 
-        <div className="sidebar-foot"><span className="online-dot" /><span>ارتباط با سرور برقرار است</span><span className="version">نسخه ۱.۰</span></div>
+        <div className="sidebar-foot"><span className="online-dot" /><span>ارتباط با سرور برقرار است</span><span className="version">نسخه ۱.۳.۴</span></div>
       </aside>
 
       <div className="content-shell">
         <header className="topbar">
           <div className="topbar-right">
             <button className="icon-button menu-button" aria-label="باز کردن منو" onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button>
-            <div><h1 className="title-font page-title">پیشخوان مدیریت</h1><p className="breadcrumb">خانه <span>/</span> پیشخوان</p></div>
+            <div><h1 className="title-font page-title">{currentView === "posts" ? "پست‌های سازمانی" : "پیشخوان مدیریت"}</h1><p className="breadcrumb">{currentView === "posts" ? <><span>اطلاعات پایه</span><span>/</span><span>پست‌های سازمانی</span></> : <>خانه <span>/</span> پیشخوان</>}</p></div>
           </div>
           <div className="topbar-left">
             <button className="icon-button notification-button" aria-label="اعلان‌ها"><Icon name="bell" /><span className="notification-dot" /></button>
             <span className="topbar-divider" />
             <div className="date-box"><Icon name="calendar" size={18} /><span>چهارشنبه، ۵ شهریور ۱۴۰۵</span></div>
+            <div className="topbar-user">
+              <span className="topbar-user-avatar" aria-label="تصویر پروفایل"><Icon name="user" size={15} /></span>
+              <span className="title-font">{currentUserName}</span>
+              <button className="topbar-logout" aria-label="خروج از سامانه" title="خروج" onClick={logout}><Icon name="logout" size={16} /></button>
+            </div>
           </div>
         </header>
 
-        <main className="dashboard">
+        {currentView === "dashboard" ? <main className="dashboard">
           <section className="welcome-card">
             <div className="welcome-copy"><p className="eyebrow">نمای کلی سامانه</p><h2 className="title-font">سلام، به سامانه مرآت خوش آمدید</h2><p>اطلاعات ساختار سازمانی، حوزه‌های انتخابیه و کاربران را از این بخش مدیریت کنید.</p></div>
             <div className="access-card"><span className="access-label">سطح دسترسی جاری</span><div className="access-value"><span className="access-icon"><Icon name="building" size={20} /></span><div><p className="title-font">ستاد مرکزی</p><span>دسترسی به تمام استان‌ها</span></div></div></div>
@@ -146,8 +367,64 @@ export default function Home() {
               </div>
             </section>
           </div>
-        </main>
+        </main> : <main className="posts-page">
+          <section className="posts-heading">
+            <div>
+              <p className="eyebrow">اطلاعات پایه</p>
+              <h2 className="title-font">مدیریت پست‌های سازمانی</h2>
+              <p>عنوان پست و سطح محل قابل استفاده برای هر پست را مدیریت کنید.</p>
+            </div>
+            <button className="primary-button" onClick={openCreatePost}><Icon name="plus" size={18} />افزودن پست جدید</button>
+          </section>
+
+          <section className="posts-card">
+            <div className="posts-toolbar">
+              <label className="posts-search"><Icon name="search" size={18} /><input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="جستجو در عنوان یا کد پست..." /></label>
+              <SearchableDropdown
+                className="posts-filter-dropdown"
+                compact
+                value={placeFilter}
+                options={placeFilterOptions}
+                onChange={setPlaceFilter}
+                placeholder="انتخاب سطح محل"
+                searchPlaceholder="جستجو در سطوح محل..."
+                noResultText="سطحی پیدا نشد."
+                ariaLabel="فیلتر سطح محل"
+                menuWidth={300}
+              />
+            </div>
+            <div className="posts-table-wrap">
+              <table className="posts-table">
+                <thead><tr><th>ردیف</th><th>کد پست</th><th>عنوان پست سازمانی</th><th>سطح محل</th><th className="post-actions-title">عملیات</th></tr></thead>
+                <tbody>
+                  {filteredPosts.map((post, index) => {
+                    const place = placeTypes[post.placeType];
+                    return <tr key={post.postId}>
+                      <td className="muted-cell">{(index + 1).toLocaleString("fa-IR")}</td>
+                      <td className="muted-cell">{post.postId.toLocaleString("fa-IR", { useGrouping: false })}</td>
+                      <td><span className="post-name"><i><Icon name="briefcase" size={15} /></i>{post.title}</span></td>
+                      <td><span className={`place-pill ${place.className}`}>{place.title}</span></td>
+                      <td><span className="post-actions"><button aria-label={`ویرایش ${post.title}`} onClick={() => openEditPost(post)}><Icon name="edit" size={17} /></button><button className="delete" aria-label={`حذف ${post.title}`} onClick={() => setPosts((items) => items.filter((item) => item.postId !== post.postId))}><Icon name="trash" size={17} /></button><button aria-label="عملیات بیشتر"><Icon name="more" size={18} /></button></span></td>
+                    </tr>;
+                  })}
+                  {filteredPosts.length === 0 && <tr><td className="posts-empty" colSpan={5}>پستی با این مشخصات پیدا نشد.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="posts-footer"><span>نمایش {filteredPosts.length.toLocaleString("fa-IR")} مورد از {posts.length.toLocaleString("fa-IR")} پست</span><span className="posts-pagination"><button><Icon name="arrow" size={14} /></button><button className="current">۱</button><button><Icon name="arrow" size={14} /></button></span></div>
+          </section>
+        </main>}
       </div>
+
+      {formOpen && <div className="post-modal-backdrop" role="presentation" onMouseDown={() => setFormOpen(false)}>
+        <section className="post-modal" role="dialog" aria-modal="true" aria-labelledby="post-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+          <button className="post-modal-close" aria-label="بستن" onClick={() => setFormOpen(false)}><Icon name="close" size={19} /></button>
+          <div className="post-modal-header"><span className="modal-symbol"><Icon name="briefcase" size={21} /></span><div><h3 id="post-modal-title" className="title-font">{editingPostId ? "ویرایش پست سازمانی" : "افزودن پست سازمانی"}</h3><p>عنوان پست و سطح محل قابل استفاده را مشخص کنید.</p></div></div>
+          <div className="post-form-field"><label htmlFor="post-title">عنوان پست</label><input id="post-title" autoFocus value={postTitle} onChange={(event) => setPostTitle(event.target.value)} placeholder="برای نمونه: رئیس دفتر استان" /></div>
+          <div className="post-form-field"><label>سطح محل</label><SearchableDropdown value={postPlaceType} options={postPlaceOptions} onChange={setPostPlaceType} placeholder="انتخاب سطح محل" searchPlaceholder="جستجو در سطوح محل..." noResultText="سطحی پیدا نشد." ariaLabel="انتخاب سطح محل پست" menuWidth={420} /></div>
+          <div className="post-modal-actions"><button className="cancel-button" onClick={() => setFormOpen(false)}>انصراف</button><button className="primary-button" onClick={savePost}>{editingPostId ? "ثبت تغییرات" : "ثبت پست"}</button></div>
+        </section>
+      </div>}
     </div>
   );
 }
